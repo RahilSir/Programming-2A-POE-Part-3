@@ -63,3 +63,202 @@
 
 
 
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+namespace RecipeApp
+{
+    public partial class MainWindow : Window
+    {
+        private List<Recipe> recipes = new List<Recipe>();
+        private Recipe currentRecipe = new Recipe();
+
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        private void AddIngredient_Click(object sender, RoutedEventArgs e)
+        {
+            string name = IngredientNameTextBox.Text;
+            if (double.TryParse(IngredientQuantityTextBox.Text, out double quantity))
+            {
+                string unit = IngredientUnitTextBox.Text;
+                if (int.TryParse(IngredientCaloriesTextBox.Text, out int calories))
+                {
+                    string foodGroup = IngredientFoodGroupTextBox.Text;
+
+                    currentRecipe.Ingredients.Add(new Ingredient
+                    {
+                        Name = name,
+                        Quantity = quantity,
+                        Unit = unit,
+                        Calories = calories,
+                        FoodGroup = foodGroup
+                    });
+
+                    IngredientsListBox.Items.Add($"{quantity} {unit} of {name} - {calories} cal ({foodGroup})");
+
+                    IngredientNameTextBox.Clear();
+                    IngredientQuantityTextBox.Clear();
+                    IngredientUnitTextBox.Clear();
+                    IngredientCaloriesTextBox.Clear();
+                    IngredientFoodGroupTextBox.Clear();
+                }
+                else
+                {
+                    MessageBox.Show("Invalid calories. Please enter a valid number.");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Invalid quantity. Please enter a valid number.");
+            }
+        }
+
+        private void AddStep_Click(object sender, RoutedEventArgs e)
+        {
+            string description = StepDescriptionTextBox.Text;
+            currentRecipe.Steps.Add(new Step { Description = description });
+            StepsListBox.Items.Add($"{currentRecipe.Steps.Count}. {description}");
+
+            StepDescriptionTextBox.Clear();
+        }
+
+        private void SaveRecipe_Click(object sender, RoutedEventArgs e)
+        {
+            string recipeName = RecipeNameTextBox.Text;
+            if (string.IsNullOrWhiteSpace(recipeName))
+            {
+                MessageBox.Show("Recipe name cannot be empty.");
+                return;
+            }
+
+            currentRecipe.Name = recipeName;
+            recipes.Add(currentRecipe);
+            recipes = recipes.OrderBy(r => r.Name).ToList();
+
+            RecipesListBox.Items.Clear();
+            foreach (var recipe in recipes)
+            {
+                RecipesListBox.Items.Add(recipe.Name);
+            }
+
+            currentRecipe = new Recipe();
+            RecipeNameTextBox.Clear();
+            IngredientsListBox.Items.Clear();
+            StepsListBox.Items.Clear();
+        }
+
+        private void RecipesListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (RecipesListBox.SelectedItem != null)
+            {
+                string selectedRecipeName = RecipesListBox.SelectedItem.ToString();
+                var selectedRecipe = recipes.FirstOrDefault(r => r.Name == selectedRecipeName);
+
+                if (selectedRecipe != null)
+                {
+                    currentRecipe = selectedRecipe;
+                    DisplayRecipe(selectedRecipe);
+                }
+            }
+        }
+
+        private void DisplayRecipe(Recipe recipe)
+        {
+            IngredientsListBox.Items.Clear();
+            StepsListBox.Items.Clear();
+
+            foreach (var ingredient in recipe.Ingredients)
+            {
+                IngredientsListBox.Items.Add($"{ingredient.Quantity} {ingredient.Unit} of {ingredient.Name} - {ingredient.Calories} cal ({ingredient.FoodGroup})");
+            }
+
+            for (int i = 0; i < recipe.Steps.Count; i++)
+            {
+                StepsListBox.Items.Add($"{i + 1}. {recipe.Steps[i].Description}");
+            }
+
+            int totalCalories = recipe.TotalCalories();
+            TotalCaloriesTextBlock.Text = $"Total Calories: {totalCalories}";
+            if (totalCalories > 300)
+            {
+                MessageBox.Show("Total calories exceed 300!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void ApplyFilters_Click(object sender, RoutedEventArgs e)
+        {
+            string ingredientName = FilterIngredientNameTextBox.Text.ToLower();
+            string foodGroup = FilterFoodGroupTextBox.Text.ToLower();
+            bool maxCaloriesValid = int.TryParse(FilterMaxCaloriesTextBox.Text, out int maxCalories);
+
+            var filteredRecipes = recipes.Where(r =>
+            {
+                bool ingredientMatch = string.IsNullOrEmpty(ingredientName) ||
+                                       r.Ingredients.Any(i => i.Name.ToLower().Contains(ingredientName));
+                bool foodGroupMatch = string.IsNullOrEmpty(foodGroup) ||
+                                      r.Ingredients.Any(i => i.FoodGroup.ToLower().Contains(foodGroup));
+                bool caloriesMatch = !maxCaloriesValid || r.TotalCalories() <= maxCalories;
+
+                return ingredientMatch && foodGroupMatch && caloriesMatch;
+            }).OrderBy(r => r.Name).ToList();
+
+            RecipesListBox.Items.Clear();
+            foreach (var recipe in filteredRecipes)
+            {
+                RecipesListBox.Items.Add(recipe.Name);
+            }
+        }
+    }
+
+    public class Ingredient
+    {
+        public string Name { get; set; }
+        public double Quantity { get; set; }
+        public string Unit { get; set; }
+        public int Calories { get; set; }
+        public string FoodGroup { get; set; }
+    }
+
+    public class Step
+    {
+        public string Description { get; set; }
+    }
+
+    public class Recipe
+    {
+        public string Name { get; set; }
+        public List<Ingredient> Ingredients { get; set; }
+        public List<Step> Steps { get; set; }
+
+        public Recipe()
+        {
+            Ingredients = new List<Ingredient>();
+            Steps = new List<Step>();
+        }
+
+        public int TotalCalories()
+        {
+            int total = 0;
+            foreach (var ingredient in Ingredients)
+            {
+                total += ingredient.Calories;
+            }
+            return total;
+        }
+    }
+}
+
+
+
+
+
+
+
+
